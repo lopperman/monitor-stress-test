@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Stress Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1000;
+            min-width: 320px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #controls.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #222;
+            color: white;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #444;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .speed-value {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+
+        #startBtn {
+            background: #22c55e;
+            color: white;
+        }
+
+        #startBtn:hover {
+            background: #16a34a;
+        }
+
+        #startBtn.running {
+            background: #ef4444;
+        }
+
+        #startBtn.running:hover {
+            background: #dc2626;
+        }
+
+        #fullscreenBtn {
+            background: #3b82f6;
+            color: white;
+        }
+
+        #fullscreenBtn:hover {
+            background: #2563eb;
+        }
+
+        #copyBtn {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        #copyBtn:hover {
+            background: #7c3aed;
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .setting-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .setting-row input {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #222;
+            color: white;
+            font-size: 12px;
+        }
+
+        .setting-row input::placeholder {
+            color: #666;
+        }
+
+        .setting-row .remove-btn {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            margin: 0;
+            background: #444;
+            border: none;
+            border-radius: 4px;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .setting-row .remove-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        #stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1000;
+            min-width: 280px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        }
+
+        #stats.hidden {
+            display: none;
+        }
+
+        #stats h2 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .stat-value.good {
+            color: #22c55e;
+        }
+
+        .stat-value.warning {
+            color: #f59e0b;
+        }
+
+        .stat-value.bad {
+            color: #ef4444;
+        }
+
+        .stat-divider {
+            border-top: 1px solid #333;
+            margin: 12px 0;
+        }
+
+        #frameGraph {
+            width: 100%;
+            height: 60px;
+            background: #111;
+            border-radius: 6px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        #frameGraphCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .graph-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .current-test {
+            background: #222;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .current-test .test-name {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+        <h1>Monitor Stress Test</h1>
+
+        <div class="control-group">
+            <label>Test Mode</label>
+            <select id="mode">
+                <option value="all">All Tests (Cycle)</option>
+                <option value="colors">Solid Colors</option>
+                <option value="rgb-flash">RGB Flash</option>
+                <option value="gradient-h">Horizontal Gradient Sweep</option>
+                <option value="gradient-v">Vertical Gradient Sweep</option>
+                <option value="checkerboard">Checkerboard</option>
+                <option value="motion-bars">Motion Bars</option>
+                <option value="motion-grid">Motion Grid</option>
+                <option value="strobe">High Contrast Strobe</option>
+                <option value="color-walk">Color Spectrum Walk</option>
+                <option value="noise">Random Noise</option>
+                <option value="inversion">Rapid Inversion</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Cycle Duration (per test): <span id="cycleLabel">3s</span></label>
+            <input type="range" id="cycleDuration" min="1" max="10" value="3">
+        </div>
+
+        <div class="control-group">
+            <label>Run Mode</label>
+            <select id="cycleCount">
+                <option value="0">Continuous (manual stop)</option>
+                <option value="1">1 full cycle (all tests once)</option>
+                <option value="3" selected>3 full cycles</option>
+                <option value="5">5 full cycles</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="hidpiControl" style="margin-top: 10px; display: none;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="hidpiMode" style="width: 16px; height: 16px; accent-color: #3b82f6;">
+                <span>HiDPI Stress Test (<span id="dprValue">2</span>x pixel density)</span>
+            </label>
+            <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                Default: renders at visible resolution for accurate results
+            </div>
+        </div>
+
+        <div class="stat-divider" style="margin: 15px 0;"></div>
+
+        <div class="control-group">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <label style="margin: 0;">Monitor Settings (optional)</label>
+                <button type="button" id="settingsHelpBtn" style="width: 20px; height: 20px; padding: 0; margin: 0; background: #444; border-radius: 50%; font-size: 12px; color: #aaa;">?</button>
+            </div>
+            <div id="settingsHelp" style="display: none; font-size: 11px; color: #999; background: #1a1a1a; padding: 10px; border-radius: 6px; margin-bottom: 10px; line-height: 1.5;">
+                <strong style="color: #ccc;">Why record settings?</strong><br>
+                Different monitor settings can affect test results. Recording them lets you compare performance across configurations.<br><br>
+                <strong style="color: #ccc;">Suggested settings to record:</strong><br>
+                • <strong>VRR</strong> - Variable Refresh Rate (FreeSync/G-Sync): On/Off<br>
+                • <strong>HDR Mode</strong> - Off, Desktop, Gaming, Movie, etc.<br>
+                • <strong>Response Time</strong> - Normal, Fast, Fastest, etc.<br>
+                • <strong>Overdrive</strong> - Off, Low, Medium, High<br>
+                • <strong>Black Equalizer</strong> - If available<br>
+                • <strong>Game Mode</strong> - On/Off (often reduces input lag)<br><br>
+                <span style="color: #666;">Settings are included when you copy results.</span>
+            </div>
+            <div id="userSettings"></div>
+            <button type="button" id="addSettingBtn" style="width: auto; padding: 6px 12px; font-size: 12px; background: #333; margin-top: 8px;">+ Add Setting</button>
+        </div>
+
+        <div class="stat-divider" style="margin: 15px 0;"></div>
+
+        <button id="startBtn">Start Test</button>
+        <button id="copyBtn">Copy Results</button>
+
+        <div class="hint">Press H to toggle UI • ESC to stop test early</div>
+    </div>
+
+    <div id="stats" class="hidden">
+        <h2>PERFORMANCE METRICS</h2>
+
+        <div class="current-test">
+            Current: <span class="test-name" id="currentTest">-</span>
+            <div id="cycleProgress" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
+        </div>
+
+        <div class="stat-row">
+            <span class="stat-label">FPS (current)</span>
+            <span class="stat-value" id="fpsValue">-</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">FPS (average)</span>
+            <span class="stat-value" id="fpsAvg">-</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">FPS (min / max)</span>
+            <span class="stat-value" id="fpsMinMax">- / -</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-row">
+            <span class="stat-label">Frame Time (current)</span>
+            <span class="stat-value" id="frameTime">-</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Frame Time (avg)</span>
+            <span class="stat-value" id="frameTimeAvg">-</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Jitter (std dev)</span>
+            <span class="stat-value" id="jitter">-</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-row">
+            <span class="stat-label">Total Frames</span>
+            <span class="stat-value" id="frameCount">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Dropped Frames</span>
+            <span class="stat-value" id="droppedFrames">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Drop Rate</span>
+            <span class="stat-value" id="dropRate">0%</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-row">
+            <span class="stat-label">Runtime</span>
+            <span class="stat-value" id="runtime">00:00</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Resolution</span>
+            <span class="stat-value" id="resolution">-</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Detected Refresh</span>
+            <span class="stat-value" id="detectedRefresh">detecting...</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Measured Range</span>
+            <span class="stat-value" id="measuredRange">-</span>
+        </div>
+
+        <div id="capabilitiesSection" style="display: none;">
+            <div class="stat-divider"></div>
+            <h2 style="font-size: 12px; margin-bottom: 8px;">DETECTED CAPABILITIES</h2>
+            <div class="stat-row" id="hdrRow" style="display: none;">
+                <span class="stat-label">HDR</span>
+                <span class="stat-value good">Supported</span>
+            </div>
+            <div class="stat-row" id="gamutRow" style="display: none;">
+                <span class="stat-label">Wide Gamut</span>
+                <span class="stat-value good" id="colorGamut">-</span>
+            </div>
+            <div class="stat-row" id="highBitDepthRow" style="display: none;">
+                <span class="stat-label">Color Depth</span>
+                <span class="stat-value good" id="colorDepth">-</span>
+            </div>
+        </div>
+
+        <div id="frameGraph">
+            <canvas id="frameGraphCanvas"></canvas>
+        </div>
+        <div class="graph-label">
+            <span>Frame Time History</span>
+            <span id="graphScale">0-33ms</span>
+        </div>
+
+        <div class="stat-divider"></div>
+        <h2 style="font-size: 12px; margin-bottom: 8px;">PER-TEST BREAKDOWN</h2>
+        <div id="perTestBreakdown" style="font-size: 11px; max-height: 150px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const controls = document.getElementById('controls');
+        const stats = document.getElementById('stats');
+        const startBtn = document.getElementById('startBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const modeSelect = document.getElementById('mode');
+        const cycleDurationSlider = document.getElementById('cycleDuration');
+        const cycleLabel = document.getElementById('cycleLabel');
+        const cycleCountSelect = document.getElementById('cycleCount');
+        const hidpiModeCheckbox = document.getElementById('hidpiMode');
+        const cycleProgressEl = document.getElementById('cycleProgress');
+        const detectedRefreshEl = document.getElementById('detectedRefresh');
+        const measuredRangeEl = document.getElementById('measuredRange');
+        const perTestBreakdownEl = document.getElementById('perTestBreakdown');
+
+        // Stats elements
+        const currentTestSpan = document.getElementById('currentTest');
+        const fpsValue = document.getElementById('fpsValue');
+        const fpsAvg = document.getElementById('fpsAvg');
+        const fpsMinMax = document.getElementById('fpsMinMax');
+        const frameTimeEl = document.getElementById('frameTime');
+        const frameTimeAvgEl = document.getElementById('frameTimeAvg');
+        const jitterEl = document.getElementById('jitter');
+        const frameCountEl = document.getElementById('frameCount');
+        const droppedFramesEl = document.getElementById('droppedFrames');
+        const dropRateEl = document.getElementById('dropRate');
+        const runtimeEl = document.getElementById('runtime');
+        const resolutionEl = document.getElementById('resolution');
+        const graphScaleEl = document.getElementById('graphScale');
+
+        // Graph canvas
+        const graphCanvas = document.getElementById('frameGraphCanvas');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        let running = false;
+        let animationId = null;
+        let frameCount = 0;
+        let lastFrameTime = 0;
+        let testStartTime = 0;
+        let currentTestIndex = 0;
+        let currentCycle = 0;
+        let lastTestIndex = -1;
+        let testComplete = false;
+        let capturedResolution = '';
+        let minMeasuredFps = Infinity;
+        let maxMeasuredFps = 0;
+        let perTestStats = {};
+
+        // Performance tracking
+        let frameTimes = [];
+        let fpsHistory = [];
+        let droppedFrames = 0;
+        let minFps = Infinity;
+        let maxFps = 0;
+        let detectedRefreshRate = 60; // Default, will be auto-detected
+        let detectedFrameTime = 16.67;
+        let refreshDetectionSamples = [];
+        const REFRESH_DETECTION_COUNT = 30; // Frames to sample for detection
+        const MAX_HISTORY = 200;
+        const FRAME_TIME_GRAPH_MAX = 50; // ms
+
+        const solidColors = [
+            '#FF0000', '#00FF00', '#0000FF',
+            '#FFFF00', '#FF00FF', '#00FFFF',
+            '#FFFFFF', '#000000',
+            '#FF8000', '#8000FF', '#00FF80', '#FF0080'
+        ];
+
+        const allTests = [
+            'colors', 'rgb-flash', 'gradient-h', 'gradient-v',
+            'checkerboard', 'motion-bars', 'motion-grid',
+            'strobe', 'color-walk', 'noise', 'inversion'
+        ];
+
+        let colorIndex = 0;
+        let gradientOffset = 0;
+        let motionOffset = 0;
+        let hue = 0;
+        let strobeState = false;
+
+        function resize() {
+            const dpr = hidpiModeCheckbox.checked ? window.devicePixelRatio : 1;
+
+            // Reset any existing transform before resizing
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+
+            if (dpr !== 1) {
+                ctx.scale(dpr, dpr);
+            }
+
+            graphCanvas.width = graphCanvas.offsetWidth * window.devicePixelRatio;
+            graphCanvas.height = graphCanvas.offsetHeight * window.devicePixelRatio;
+
+            resolutionEl.textContent = `${window.innerWidth}x${window.innerHeight}`;
+        }
+
+        // Re-resize when HiDPI mode changes
+        hidpiModeCheckbox.addEventListener('change', resize);
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Only show HiDPI option on high-DPR displays
+        if (window.devicePixelRatio > 1) {
+            document.getElementById('hidpiControl').style.display = 'block';
+            document.getElementById('dprValue').textContent = window.devicePixelRatio;
+        }
+
+        // Detect display capabilities - only show what's confirmed
+        const detectedCapabilities = detectDisplayCapabilities();
+        let hasCapabilities = false;
+
+        if (detectedCapabilities.hdr) {
+            document.getElementById('hdrRow').style.display = 'flex';
+            hasCapabilities = true;
+        }
+
+        if (detectedCapabilities.wideGamut) {
+            document.getElementById('gamutRow').style.display = 'flex';
+            document.getElementById('colorGamut').textContent = detectedCapabilities.gamut;
+            hasCapabilities = true;
+        }
+
+        if (detectedCapabilities.highBitDepth) {
+            document.getElementById('highBitDepthRow').style.display = 'flex';
+            document.getElementById('colorDepth').textContent = detectedCapabilities.colorDepth;
+            hasCapabilities = true;
+        }
+
+        if (hasCapabilities) {
+            document.getElementById('capabilitiesSection').style.display = 'block';
+        }
+
+        function detectDisplayCapabilities() {
+            const capabilities = {
+                hdr: false,
+                wideGamut: false,
+                highBitDepth: false,
+                gamut: 'sRGB',
+                colorDepth: window.screen.colorDepth + '-bit',
+                pixelRatio: window.devicePixelRatio,
+                screenRes: `${window.screen.width}x${window.screen.height}`
+            };
+
+            // HDR detection
+            if (window.matchMedia('(dynamic-range: high)').matches) {
+                capabilities.hdr = true;
+            }
+
+            // Color gamut detection (check from widest to narrowest)
+            if (window.matchMedia('(color-gamut: rec2020)').matches) {
+                capabilities.gamut = 'Rec.2020';
+                capabilities.wideGamut = true;
+            } else if (window.matchMedia('(color-gamut: p3)').matches) {
+                capabilities.gamut = 'P3';
+                capabilities.wideGamut = true;
+            }
+
+            // High bit depth (anything over 24-bit)
+            if (window.screen.colorDepth > 24) {
+                capabilities.highBitDepth = true;
+            }
+
+            return capabilities;
+        }
+
+        cycleDurationSlider.addEventListener('input', () => {
+            cycleLabel.textContent = cycleDurationSlider.value + 's';
+        });
+
+        // User settings key-value pairs
+        const userSettingsContainer = document.getElementById('userSettings');
+        const addSettingBtn = document.getElementById('addSettingBtn');
+        const MAX_SETTINGS = 10;
+
+        function addSettingRow(name = '', value = '') {
+            const currentRows = userSettingsContainer.querySelectorAll('.setting-row').length;
+            if (currentRows >= MAX_SETTINGS) return;
+
+            const row = document.createElement('div');
+            row.className = 'setting-row';
+            row.innerHTML = `
+                <input type="text" class="setting-name" placeholder="Setting name" value="${name}">
+                <input type="text" class="setting-value" placeholder="Value" value="${value}">
+                <button type="button" class="remove-btn" title="Remove">×</button>
+            `;
+
+            row.querySelector('.remove-btn').addEventListener('click', () => {
+                row.remove();
+                updateAddButton();
+            });
+
+            userSettingsContainer.appendChild(row);
+            updateAddButton();
+        }
+
+        function updateAddButton() {
+            const currentRows = userSettingsContainer.querySelectorAll('.setting-row').length;
+            addSettingBtn.style.display = currentRows >= MAX_SETTINGS ? 'none' : 'block';
+        }
+
+        function getUserSettings() {
+            const settings = {};
+            userSettingsContainer.querySelectorAll('.setting-row').forEach(row => {
+                const name = row.querySelector('.setting-name').value.trim();
+                const value = row.querySelector('.setting-value').value.trim();
+                if (name && value) {
+                    settings[name] = value;
+                }
+            });
+            return settings;
+        }
+
+        addSettingBtn.addEventListener('click', () => addSettingRow());
+
+        // Help toggle
+        const settingsHelpBtn = document.getElementById('settingsHelpBtn');
+        const settingsHelp = document.getElementById('settingsHelp');
+        settingsHelpBtn.addEventListener('click', () => {
+            const isVisible = settingsHelp.style.display !== 'none';
+            settingsHelp.style.display = isVisible ? 'none' : 'block';
+            settingsHelpBtn.style.background = isVisible ? '#444' : '#3b82f6';
+            settingsHelpBtn.style.color = isVisible ? '#aaa' : '#fff';
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'h' || e.key === 'H') {
+                controls.classList.toggle('hidden');
+                stats.classList.toggle('hidden');
+            }
+            if (e.key === 'Escape' && running) {
+                e.preventDefault();
+                stopTest();
+            }
+        });
+
+        // Exit fullscreen when test completes or is stopped
+        document.addEventListener('fullscreenchange', () => {
+            // If user manually exits fullscreen during test, stop the test
+            if (!document.fullscreenElement && running) {
+                stopTest();
+            }
+        });
+
+        copyBtn.addEventListener('click', copyResults);
+
+        startBtn.addEventListener('click', () => {
+            if (running) {
+                stopTest();
+            } else {
+                startTest();
+            }
+        });
+
+        function stopTest() {
+            running = false;
+            startBtn.textContent = 'Start Test';
+            startBtn.classList.remove('running');
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Exit fullscreen
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        function resetStats() {
+            frameCount = 0;
+            frameTimes = [];
+            fpsHistory = [];
+            droppedFrames = 0;
+            minFps = Infinity;
+            maxFps = 0;
+            refreshDetectionSamples = [];
+            detectedRefreshRate = 60;
+            detectedFrameTime = 16.67;
+            detectedRefreshEl.textContent = 'detecting...';
+            currentCycle = 0;
+            lastTestIndex = -1;
+            testComplete = false;
+            cycleProgressEl.textContent = '';
+            capturedResolution = '';
+            minMeasuredFps = Infinity;
+            maxMeasuredFps = 0;
+            measuredRangeEl.textContent = '-';
+            perTestStats = {};
+            // Initialize per-test stats
+            allTests.forEach(test => {
+                perTestStats[test] = { frames: 0, drops: 0, totalTime: 0 };
+            });
+        }
+
+        // Detect refresh rate with minimal rendering (before heavy tests start)
+        function detectRefreshRate() {
+            return new Promise((resolve) => {
+                const samples = [];
+                let lastTime = 0;
+                const targetSamples = 60;
+
+                function sample(now) {
+                    if (lastTime > 0) {
+                        const delta = now - lastTime;
+                        // Only count reasonable frame times (ignore startup/GC spikes)
+                        if (delta > 4 && delta < 50) {
+                            samples.push(delta);
+                        }
+                    }
+                    lastTime = now;
+
+                    if (samples.length < targetSamples) {
+                        // Minimal rendering - just a tiny rectangle
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 1, 1);
+                        requestAnimationFrame(sample);
+                    } else {
+                        // Use median for robustness
+                        const sorted = [...samples].sort((a, b) => a - b);
+                        const median = sorted[Math.floor(sorted.length / 2)];
+                        resolve(median);
+                    }
+                }
+
+                requestAnimationFrame(sample);
+            });
+        }
+
+        async function startTest() {
+            // Enter fullscreen first
+            try {
+                await document.documentElement.requestFullscreen();
+            } catch (e) {
+                // Fullscreen may fail (e.g., not triggered by user gesture)
+                // Continue anyway
+            }
+
+            running = true;
+            startBtn.textContent = 'Detecting...';
+            startBtn.disabled = true;
+            stats.classList.remove('hidden');
+            resetStats();
+
+            // Small delay to let fullscreen settle
+            await new Promise(r => setTimeout(r, 100));
+
+            // Capture resolution at test start (now in fullscreen)
+            const renderDpr = hidpiModeCheckbox.checked ? window.devicePixelRatio : 1;
+            const renderWidth = window.innerWidth * renderDpr;
+            const renderHeight = window.innerHeight * renderDpr;
+            capturedResolution = `${window.innerWidth}x${window.innerHeight} visible (${renderWidth}x${renderHeight} rendered)`;
+            resolutionEl.textContent = `${window.innerWidth}x${window.innerHeight}`;
+
+            // Ensure canvas is sized correctly for this test
+            resize();
+
+            // Detect refresh rate BEFORE heavy rendering starts
+            detectedFrameTime = await detectRefreshRate();
+            detectedRefreshRate = 1000 / detectedFrameTime;
+            detectedRefreshEl.textContent = `${detectedRefreshRate.toFixed(0)} Hz`;
+            minMeasuredFps = Infinity;
+            maxMeasuredFps = 0;
+
+            startBtn.textContent = 'Stop Test';
+            startBtn.disabled = false;
+            startBtn.classList.add('running');
+            testStartTime = performance.now();
+            lastFrameTime = performance.now();
+            currentTestIndex = 0;
+            runTest();
+        }
+
+        function getCurrentTest() {
+            const mode = modeSelect.value;
+            if (mode === 'all') {
+                const cycleDuration = cycleDurationSlider.value * 1000;
+                const elapsed = performance.now() - testStartTime;
+                const totalTestIndex = Math.floor(elapsed / cycleDuration);
+                currentTestIndex = totalTestIndex % allTests.length;
+
+                // Track cycle changes
+                const newCycle = Math.floor(totalTestIndex / allTests.length);
+                if (newCycle > currentCycle) {
+                    currentCycle = newCycle;
+                }
+
+                // Update progress display
+                const targetCycles = parseInt(cycleCountSelect.value);
+                if (targetCycles > 0) {
+                    cycleProgressEl.textContent = `Cycle ${currentCycle + 1} of ${targetCycles} • Test ${currentTestIndex + 1}/${allTests.length}`;
+
+                    // Check if we've completed all cycles
+                    if (currentCycle >= targetCycles) {
+                        testComplete = true;
+                    }
+                } else {
+                    cycleProgressEl.textContent = `Cycle ${currentCycle + 1} • Test ${currentTestIndex + 1}/${allTests.length}`;
+                }
+
+                return allTests[currentTestIndex];
+            }
+            cycleProgressEl.textContent = '';
+            return mode;
+        }
+
+        function calculateStats() {
+            if (frameTimes.length < 2) return;
+
+            const recentFrameTimes = frameTimes.slice(-60);
+            const avgFrameTime = recentFrameTimes.reduce((a, b) => a + b, 0) / recentFrameTimes.length;
+            const currentFps = 1000 / recentFrameTimes[recentFrameTimes.length - 1];
+            const avgFps = 1000 / avgFrameTime;
+
+            // Update min/max (exclude outliers below 10 FPS for min tracking)
+            if (currentFps < minFps && currentFps > 10) minFps = currentFps;
+            if (currentFps > maxFps) maxFps = currentFps;
+
+            // Track measured refresh rate range (for VRR displays)
+            // Use a rolling window to detect effective refresh rate
+            if (recentFrameTimes.length >= 10) {
+                const recentAvgFps = 1000 / (recentFrameTimes.slice(-10).reduce((a, b) => a + b, 0) / 10);
+                if (recentAvgFps < minMeasuredFps && recentAvgFps > 30) minMeasuredFps = recentAvgFps;
+                if (recentAvgFps > maxMeasuredFps) maxMeasuredFps = recentAvgFps;
+            }
+
+            // Calculate jitter (standard deviation)
+            const variance = recentFrameTimes.reduce((sum, ft) => sum + Math.pow(ft - avgFrameTime, 2), 0) / recentFrameTimes.length;
+            const stdDev = Math.sqrt(variance);
+
+            // Calculate drop rate
+            const dropRate = frameCount > 0 ? (droppedFrames / frameCount * 100) : 0;
+
+            // Runtime
+            const runtime = (performance.now() - testStartTime) / 1000;
+            const minutes = Math.floor(runtime / 60);
+            const seconds = Math.floor(runtime % 60);
+
+            // Update UI
+            updateStatValue(fpsValue, currentFps.toFixed(1), getFpsClass(currentFps));
+            updateStatValue(fpsAvg, avgFps.toFixed(1), getFpsClass(avgFps));
+            fpsMinMax.textContent = `${minFps === Infinity ? '-' : minFps.toFixed(0)} / ${maxFps === 0 ? '-' : maxFps.toFixed(0)}`;
+
+            updateStatValue(frameTimeEl, recentFrameTimes[recentFrameTimes.length - 1].toFixed(2) + 'ms', getFrameTimeClass(recentFrameTimes[recentFrameTimes.length - 1]));
+            updateStatValue(frameTimeAvgEl, avgFrameTime.toFixed(2) + 'ms', getFrameTimeClass(avgFrameTime));
+            updateStatValue(jitterEl, stdDev.toFixed(2) + 'ms', getJitterClass(stdDev));
+
+            frameCountEl.textContent = frameCount;
+            updateStatValue(droppedFramesEl, droppedFrames, droppedFrames > 0 ? (droppedFrames > 10 ? 'bad' : 'warning') : 'good');
+            updateStatValue(dropRateEl, dropRate.toFixed(1) + '%', dropRate > 5 ? 'bad' : (dropRate > 1 ? 'warning' : 'good'));
+
+            runtimeEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            // Update measured refresh range (for VRR displays)
+            if (minMeasuredFps < Infinity && maxMeasuredFps > 0) {
+                const rangeSpread = maxMeasuredFps - minMeasuredFps;
+                const rangeClass = rangeSpread > 30 ? 'warning' : 'good';
+                measuredRangeEl.textContent = `${minMeasuredFps.toFixed(0)}-${maxMeasuredFps.toFixed(0)} Hz`;
+                measuredRangeEl.className = 'stat-value ' + rangeClass;
+            }
+
+            // Draw frame time graph
+            drawGraph();
+
+            // Update per-test breakdown
+            updatePerTestBreakdown();
+        }
+
+        function updatePerTestBreakdown() {
+            const testNames = {
+                'colors': 'Solid Colors',
+                'rgb-flash': 'RGB Flash',
+                'gradient-h': 'Gradient H',
+                'gradient-v': 'Gradient V',
+                'checkerboard': 'Checkerboard',
+                'motion-bars': 'Motion Bars',
+                'motion-grid': 'Motion Grid',
+                'strobe': 'Strobe',
+                'color-walk': 'Color Walk',
+                'noise': 'Noise',
+                'inversion': 'Inversion'
+            };
+
+            // Sort by drop rate descending
+            const sorted = Object.entries(perTestStats)
+                .filter(([_, stats]) => stats.frames > 0)
+                .map(([test, stats]) => ({
+                    test,
+                    name: testNames[test] || test,
+                    frames: stats.frames,
+                    drops: stats.drops,
+                    dropRate: stats.frames > 0 ? (stats.drops / stats.frames * 100) : 0,
+                    avgFps: stats.frames > 0 ? (1000 / (stats.totalTime / stats.frames)) : 0
+                }))
+                .sort((a, b) => b.dropRate - a.dropRate);
+
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="color: #666; border-bottom: 1px solid #333;"><th style="text-align: left; padding: 2px 4px;">Test</th><th style="text-align: right; padding: 2px 4px;">FPS</th><th style="text-align: right; padding: 2px 4px;">Drops</th><th style="text-align: right; padding: 2px 4px;">Rate</th></tr>';
+
+            sorted.forEach(({ name, avgFps, drops, dropRate }) => {
+                const rateColor = dropRate > 10 ? '#ef4444' : (dropRate > 2 ? '#f59e0b' : '#22c55e');
+                html += `<tr>
+                    <td style="padding: 2px 4px; color: #aaa;">${name}</td>
+                    <td style="padding: 2px 4px; text-align: right;">${avgFps.toFixed(0)}</td>
+                    <td style="padding: 2px 4px; text-align: right;">${drops}</td>
+                    <td style="padding: 2px 4px; text-align: right; color: ${rateColor};">${dropRate.toFixed(1)}%</td>
+                </tr>`;
+            });
+
+            html += '</table>';
+            perTestBreakdownEl.innerHTML = html;
+        }
+
+        function generateAnalysis() {
+            const lines = [];
+            const testNames = {
+                'colors': 'Solid Colors', 'rgb-flash': 'RGB Flash', 'gradient-h': 'Gradient H',
+                'gradient-v': 'Gradient V', 'checkerboard': 'Checkerboard', 'motion-bars': 'Motion Bars',
+                'motion-grid': 'Motion Grid', 'strobe': 'Strobe', 'color-walk': 'Color Walk',
+                'noise': 'Noise', 'inversion': 'Inversion'
+            };
+
+            // Calculate how many tests are GPU-bound (< 80% of target)
+            const gpuBoundTests = Object.entries(perTestStats)
+                .filter(([_, stats]) => {
+                    if (stats.frames === 0) return false;
+                    const avgFps = 1000 / (stats.totalTime / stats.frames);
+                    return avgFps < detectedRefreshRate * 0.8;
+                })
+                .map(([test, stats]) => ({
+                    test,
+                    name: testNames[test] || test,
+                    avgFps: 1000 / (stats.totalTime / stats.frames)
+                }));
+
+            const perfectTests = Object.entries(perTestStats)
+                .filter(([_, stats]) => {
+                    if (stats.frames === 0) return false;
+                    const dropRate = stats.drops / stats.frames;
+                    return dropRate < 0.02; // Less than 2% drops
+                });
+
+            const totalTests = Object.entries(perTestStats).filter(([_, s]) => s.frames > 0).length;
+            const renderedRes = capturedResolution.match(/\(([^)]+) rendered\)/)?.[1] || capturedResolution;
+
+            // Determine analysis type based on results
+            if (gpuBoundTests.length === 0) {
+                // Perfect - all tests hit target
+                lines.push(`ANALYSIS: Excellent GPU/Monitor Match`);
+                lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                lines.push(``);
+                lines.push(`Your GPU maintained ${detectedRefreshRate.toFixed(0)} FPS across all tests at ${renderedRes}.`);
+                lines.push(`Your hardware is well-balanced for this resolution and refresh rate.`);
+
+            } else if (gpuBoundTests.length <= 2 && perfectTests.length >= totalTests - 2) {
+                // Excellent with minor outliers
+                lines.push(`ANALYSIS: Excellent (with ${gpuBoundTests.length === 1 ? '1 outlier' : 'minor outliers'})`);
+                lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                lines.push(``);
+                lines.push(`Your GPU handles ${detectedRefreshRate.toFixed(0)} Hz very well at ${renderedRes}.`);
+                lines.push(`${perfectTests.length} of ${totalTests} tests ran at full refresh rate.`);
+                lines.push(``);
+
+                const outlierNames = gpuBoundTests.map(t => t.name).join(' and ');
+                if (gpuBoundTests.length === 1) {
+                    lines.push(`The ${outlierNames} test is an outlier - it uses thousands of tiny`);
+                    lines.push(`draw calls which stress the CPU/JavaScript engine, not the GPU.`);
+                    lines.push(`This is a limitation of the test, not your hardware.`);
+                } else {
+                    lines.push(`${outlierNames} are outliers due to their computationally`);
+                    lines.push(`intensive rendering methods (many draw calls or pixel operations).`);
+                }
+                lines.push(``);
+                lines.push(`VERDICT: Your GPU/monitor pairing is well-matched for real-world use.`);
+
+            } else if (gpuBoundTests.length <= Math.floor(totalTests / 2)) {
+                // Mixed - some tests struggling
+                lines.push(`ANALYSIS: Mixed GPU/Monitor Performance`);
+                lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                lines.push(``);
+                lines.push(`Your monitor can display ${detectedRefreshRate.toFixed(0)} Hz, but your GPU cannot`);
+                lines.push(`maintain that rate on some demanding visual tests.`);
+                lines.push(``);
+                lines.push(`• ${perfectTests.length} of ${totalTests} tests ran at full refresh rate`);
+                lines.push(`• ${gpuBoundTests.length} of ${totalTests} tests were GPU-limited`);
+                lines.push(``);
+
+                if (minMeasuredFps < Infinity && maxMeasuredFps > 0) {
+                    const vrrRange = maxMeasuredFps - minMeasuredFps;
+                    if (vrrRange > 30) {
+                        lines.push(`Your VRR (Variable Refresh Rate) compensated well, ranging`);
+                        lines.push(`from ${minMeasuredFps.toFixed(0)}Hz to ${maxMeasuredFps.toFixed(0)}Hz to match GPU output and prevent tearing.`);
+                        lines.push(``);
+                    }
+                }
+
+                lines.push(`Most demanding tests for your GPU:`);
+                gpuBoundTests.sort((a, b) => a.avgFps - b.avgFps).slice(0, 3).forEach(({ name, avgFps }) => {
+                    lines.push(`  • ${name}: ${avgFps.toFixed(0)} FPS (${(avgFps / detectedRefreshRate * 100).toFixed(0)}% of target)`);
+                });
+                lines.push(``);
+                lines.push(`VERDICT: Good for most content. A faster GPU would help with`);
+                lines.push(`demanding visual effects at this resolution.`);
+
+            } else {
+                // GPU-limited - most tests struggling
+                lines.push(`ANALYSIS: GPU-Limited Performance`);
+                lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                lines.push(``);
+                lines.push(`Your monitor can display ${detectedRefreshRate.toFixed(0)} Hz, but your GPU cannot`);
+                lines.push(`keep up at ${renderedRes}.`);
+                lines.push(``);
+                lines.push(`• Only ${perfectTests.length} of ${totalTests} tests ran at full refresh rate`);
+                lines.push(`• ${gpuBoundTests.length} of ${totalTests} tests were GPU-limited`);
+                lines.push(``);
+
+                if (minMeasuredFps < Infinity && maxMeasuredFps > 0) {
+                    const vrrRange = maxMeasuredFps - minMeasuredFps;
+                    if (vrrRange > 30) {
+                        lines.push(`VRR helped prevent tearing, ranging from ${minMeasuredFps.toFixed(0)}Hz to ${maxMeasuredFps.toFixed(0)}Hz.`);
+                        lines.push(``);
+                    }
+                }
+
+                lines.push(`VERDICT: Your monitor exceeds your GPU's capability at this`);
+                lines.push(`resolution. Consider a lower resolution or upgraded GPU to`);
+                lines.push(`achieve the full ${detectedRefreshRate.toFixed(0)}Hz.`);
+            }
+
+            return lines.join('\n');
+        }
+
+        function generatePerTestText() {
+            const testNames = {
+                'colors': 'Solid Colors',
+                'rgb-flash': 'RGB Flash',
+                'gradient-h': 'Gradient H',
+                'gradient-v': 'Gradient V',
+                'checkerboard': 'Checkerboard',
+                'motion-bars': 'Motion Bars',
+                'motion-grid': 'Motion Grid',
+                'strobe': 'Strobe',
+                'color-walk': 'Color Walk',
+                'noise': 'Noise',
+                'inversion': 'Inversion'
+            };
+
+            const sorted = Object.entries(perTestStats)
+                .filter(([_, stats]) => stats.frames > 0)
+                .map(([test, stats]) => ({
+                    name: testNames[test] || test,
+                    frames: stats.frames,
+                    drops: stats.drops,
+                    dropRate: stats.frames > 0 ? (stats.drops / stats.frames * 100) : 0,
+                    avgFps: stats.frames > 0 ? (1000 / (stats.totalTime / stats.frames)) : 0
+                }))
+                .sort((a, b) => b.dropRate - a.dropRate);
+
+            return sorted.map(({ name, avgFps, drops, dropRate }) =>
+                `- ${name.padEnd(14)} ${avgFps.toFixed(0).padStart(3)} FPS | ${drops.toString().padStart(3)} drops | ${dropRate.toFixed(1).padStart(5)}%`
+            ).join('\n');
+        }
+
+        function updateStatValue(el, value, className) {
+            el.textContent = value;
+            el.className = 'stat-value ' + className;
+        }
+
+        function getFpsClass(fps) {
+            if (fps >= detectedRefreshRate * 0.95) return 'good';
+            if (fps >= detectedRefreshRate * 0.8) return 'warning';
+            return 'bad';
+        }
+
+        function getFrameTimeClass(ft) {
+            if (ft <= detectedFrameTime * 1.1) return 'good';
+            if (ft <= detectedFrameTime * 1.5) return 'warning';
+            return 'bad';
+        }
+
+        function getJitterClass(jitter) {
+            if (jitter < 2) return 'good';
+            if (jitter < 5) return 'warning';
+            return 'bad';
+        }
+
+        function drawGraph() {
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+            const dpr = window.devicePixelRatio;
+
+            graphCtx.fillStyle = '#111';
+            graphCtx.fillRect(0, 0, w, h);
+
+            if (frameTimes.length < 2) return;
+
+            const displayTimes = frameTimes.slice(-MAX_HISTORY);
+            const barWidth = w / MAX_HISTORY;
+
+            // Draw target line (based on detected refresh rate)
+            const targetMs = detectedFrameTime;
+            const targetY = h - (targetMs / FRAME_TIME_GRAPH_MAX) * h;
+            graphCtx.strokeStyle = '#3b82f6';
+            graphCtx.lineWidth = 1 * dpr;
+            graphCtx.setLineDash([4 * dpr, 4 * dpr]);
+            graphCtx.beginPath();
+            graphCtx.moveTo(0, targetY);
+            graphCtx.lineTo(w, targetY);
+            graphCtx.stroke();
+            graphCtx.setLineDash([]);
+
+            // Draw bars
+            displayTimes.forEach((ft, i) => {
+                const barHeight = Math.min((ft / FRAME_TIME_GRAPH_MAX) * h, h);
+                const x = i * barWidth;
+
+                // Color based on performance
+                if (ft <= targetMs * 1.1) {
+                    graphCtx.fillStyle = '#22c55e';
+                } else if (ft <= targetMs * 1.5) {
+                    graphCtx.fillStyle = '#f59e0b';
+                } else {
+                    graphCtx.fillStyle = '#ef4444';
+                }
+
+                graphCtx.fillRect(x, h - barHeight, barWidth - 1, barHeight);
+            });
+
+            graphScaleEl.textContent = `0-${FRAME_TIME_GRAPH_MAX}ms`;
+        }
+
+        function copyResults() {
+            const recentFrameTimes = frameTimes.slice(-60);
+            const avgFrameTime = recentFrameTimes.length > 0 ? recentFrameTimes.reduce((a, b) => a + b, 0) / recentFrameTimes.length : 0;
+            const avgFps = avgFrameTime > 0 ? 1000 / avgFrameTime : 0;
+            const runtime = (performance.now() - testStartTime) / 1000;
+            const dropRate = frameCount > 0 ? (droppedFrames / frameCount * 100) : 0;
+
+            const variance = recentFrameTimes.length > 0 ? recentFrameTimes.reduce((sum, ft) => sum + Math.pow(ft - avgFrameTime, 2), 0) / recentFrameTimes.length : 0;
+            const stdDev = Math.sqrt(variance);
+
+            const vrrRange = (minMeasuredFps < Infinity && maxMeasuredFps > 0)
+                ? `${minMeasuredFps.toFixed(0)}-${maxMeasuredFps.toFixed(0)} Hz`
+                : 'N/A';
+
+            const caps = detectDisplayCapabilities();
+
+            // Build capabilities string - only include confirmed features
+            let capsLines = [];
+            if (caps.hdr) capsLines.push('- HDR: Supported');
+            if (caps.wideGamut) capsLines.push(`- Wide Gamut: ${caps.gamut}`);
+            if (caps.highBitDepth) capsLines.push(`- Color Depth: ${caps.colorDepth}`);
+            if (caps.pixelRatio > 1) capsLines.push(`- HiDPI: ${caps.pixelRatio}x`);
+
+            const capsSection = capsLines.length > 0
+                ? `\nDetected Capabilities:\n${capsLines.join('\n')}\n`
+                : '';
+
+            // User-reported settings
+            const userSettings = getUserSettings();
+            const userSettingsKeys = Object.keys(userSettings);
+            const userSettingsSection = userSettingsKeys.length > 0
+                ? `\nUser-Reported Monitor Settings:\n${userSettingsKeys.map(k => `- ${k}: ${userSettings[k]}`).join('\n')}\n`
+                : '';
+
+            const results = `
+Monitor Stress Test Results
+===========================
+Date: ${new Date().toISOString()}
+Resolution: ${capturedResolution || `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x DPR`}
+Detected Refresh Rate: ${detectedRefreshRate.toFixed(1)} Hz (${detectedFrameTime.toFixed(2)}ms)
+Measured Refresh Range: ${vrrRange}
+${capsSection}${userSettingsSection}
+Performance Metrics:
+- Average FPS: ${avgFps.toFixed(1)}
+- Min FPS: ${minFps === Infinity ? 'N/A' : minFps.toFixed(1)}
+- Max FPS: ${maxFps === 0 ? 'N/A' : maxFps.toFixed(1)}
+- Average Frame Time: ${avgFrameTime.toFixed(2)}ms
+- Jitter (Std Dev): ${stdDev.toFixed(2)}ms
+
+Frame Statistics:
+- Total Frames: ${frameCount}
+- Dropped Frames: ${droppedFrames}
+- Drop Rate: ${dropRate.toFixed(2)}%
+- Test Duration: ${runtime.toFixed(1)}s
+
+Test Configuration:
+- Test Mode: ${modeSelect.value}
+- Run Mode: ${cycleCountSelect.value === '0' ? 'Continuous' : cycleCountSelect.value + ' cycle(s)'}
+- Cycles Completed: ${currentCycle}
+
+Per-Test Breakdown (sorted by drop rate):
+${generatePerTestText()}
+
+${generateAnalysis()}
+`.trim();
+
+            navigator.clipboard.writeText(results).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = originalText, 2000);
+            });
+        }
+
+        function runTest() {
+            if (!running) return;
+
+            // Check if test is complete (for finite cycle modes)
+            if (testComplete) {
+                cycleProgressEl.innerHTML = '<span style="color: #22c55e;">Complete!</span>';
+                stopTest();
+                return;
+            }
+
+            const now = performance.now();
+            const deltaTime = now - lastFrameTime;
+
+            // Always run at requestAnimationFrame rate
+            const test = getCurrentTest();
+            currentTestSpan.textContent = test;
+
+            // Record frame time
+            if (lastFrameTime > 0) {
+                frameTimes.push(deltaTime);
+                if (frameTimes.length > MAX_HISTORY * 2) {
+                    frameTimes = frameTimes.slice(-MAX_HISTORY);
+                }
+
+                // Track per-test stats
+                if (perTestStats[test]) {
+                    perTestStats[test].frames++;
+                    perTestStats[test].totalTime += deltaTime;
+                }
+
+                // Check for dropped frame (frame took more than 1.5x detected frame time)
+                if (deltaTime > detectedFrameTime * 1.5) {
+                    droppedFrames++;
+                    if (perTestStats[test]) {
+                        perTestStats[test].drops++;
+                    }
+                }
+            }
+
+            lastFrameTime = now;
+            frameCount++;
+
+            // Update stats every 10 frames
+            if (frameCount % 10 === 0) {
+                calculateStats();
+            }
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            switch (test) {
+                case 'colors':
+                    ctx.fillStyle = solidColors[colorIndex % solidColors.length];
+                    ctx.fillRect(0, 0, w, h);
+                    colorIndex++;
+                    break;
+
+                case 'rgb-flash':
+                    const rgbColors = ['#FF0000', '#00FF00', '#0000FF'];
+                    ctx.fillStyle = rgbColors[frameCount % 3];
+                    ctx.fillRect(0, 0, w, h);
+                    break;
+
+                case 'gradient-h':
+                    const gradH = ctx.createLinearGradient(0, 0, w, 0);
+                    for (let i = 0; i <= 1; i += 0.1) {
+                        gradH.addColorStop(i, `hsl(${(gradientOffset + i * 360) % 360}, 100%, 50%)`);
+                    }
+                    ctx.fillStyle = gradH;
+                    ctx.fillRect(0, 0, w, h);
+                    gradientOffset += 20;
+                    break;
+
+                case 'gradient-v':
+                    const gradV = ctx.createLinearGradient(0, 0, 0, h);
+                    for (let i = 0; i <= 1; i += 0.1) {
+                        gradV.addColorStop(i, `hsl(${(gradientOffset + i * 360) % 360}, 100%, 50%)`);
+                    }
+                    ctx.fillStyle = gradV;
+                    ctx.fillRect(0, 0, w, h);
+                    gradientOffset += 20;
+                    break;
+
+                case 'checkerboard':
+                    const sizes = [2, 4, 8, 16, 32, 64, 128];
+                    const size = sizes[Math.floor(frameCount / 3) % sizes.length];
+                    const invert = Math.floor(frameCount / 2) % 2;
+                    for (let y = 0; y < h; y += size) {
+                        for (let x = 0; x < w; x += size) {
+                            const isWhite = ((x / size + y / size) % 2 === invert);
+                            ctx.fillStyle = isWhite ? '#FFFFFF' : '#000000';
+                            ctx.fillRect(x, y, size, size);
+                        }
+                    }
+                    break;
+
+                case 'motion-bars':
+                    const barWidth = 40;
+                    for (let x = -barWidth; x < w + barWidth; x += barWidth * 2) {
+                        const pos = (x + motionOffset) % (w + barWidth * 2) - barWidth;
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(pos, 0, barWidth, h);
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(pos + barWidth, 0, barWidth, h);
+                    }
+                    motionOffset += 10;
+                    break;
+
+                case 'motion-grid':
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#FFFFFF';
+                    const gridSize = 60;
+                    const offset = motionOffset % gridSize;
+                    for (let y = -gridSize + offset; y < h + gridSize; y += gridSize) {
+                        for (let x = -gridSize + offset; x < w + gridSize; x += gridSize) {
+                            ctx.beginPath();
+                            ctx.arc(x, y, 8, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                    motionOffset += 4;
+                    break;
+
+                case 'strobe':
+                    strobeState = !strobeState;
+                    ctx.fillStyle = strobeState ? '#FFFFFF' : '#000000';
+                    ctx.fillRect(0, 0, w, h);
+                    break;
+
+                case 'color-walk':
+                    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                    ctx.fillRect(0, 0, w, h);
+                    hue = (hue + 5) % 360;
+                    break;
+
+                case 'noise':
+                    const imageData = ctx.createImageData(w, h);
+                    const data = imageData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const v = Math.random() * 255;
+                        data[i] = v;
+                        data[i + 1] = v;
+                        data[i + 2] = v;
+                        data[i + 3] = 255;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                    break;
+
+                case 'inversion':
+                    const invColors = ['#FFFFFF', '#000000', '#FF0000', '#00FFFF', '#00FF00', '#FF00FF', '#0000FF', '#FFFF00'];
+                    ctx.fillStyle = invColors[frameCount % invColors.length];
+                    ctx.fillRect(0, 0, w, h);
+                    break;
+            }
+
+            animationId = requestAnimationFrame(runTest);
+        }
+    </script>
+</body>
+</html>
