@@ -2,8 +2,11 @@
 
 A browser-based tool for stress testing your monitor and GPU combo. Built to answer the question: *"Is my fancy new monitor actually being held back by my GPU?"*
 
-![](/images/monitor_stress_test.png?raw=true)
-![](/images/performance_metrics.png?raw=true)
+<p align="center">
+  <img src="/images/monitor_stress_test.png?raw=true" alt="Monitor Stress Test" width="30%"/>
+  <img src="/images/performance_metrics.png?raw=true" alt="Performance Metrics" width="30%"/>
+</p>
+
 
 ## The Story Behind This Tool
 
