@@ -1,5 +1,7 @@
 # Monitor Stress Test
 
+100% HTML -- To test your monitor, download this [html file](https://github.com/lopperman/monitor-stress-test/blob/main/stress-test.html), open it, click the Start Test button. 
+
 A browser-based tool for stress testing your monitor and GPU combo. Built to answer the question: *"Is my fancy new monitor actually being held back by my GPU?"*
 
 <p align="center">
