@@ -1,6 +1,6 @@
 # Monitor Stress Test
 
-100% HTML -- To test your monitor, download this [html file](https://github.com/lopperman/monitor-stress-test/blob/main/stress-test.html), open it, click the Start Test button. That's it.  What was meant to be a 1-minute chat with Claude AI about testing my monitor, turned into a 2-hour collaboritve pairing session -- which was as good as I've ever experienced in the past 30 years.  
+100% HTML -- To test your monitor, download this [html file](https://github.com/lopperman/monitor-stress-test/blob/main/stress-test.html), open it, click the Start Test button. That's it.  What was meant to be a 1-minute chat with Claude AI about testing my monitor, turned into a 2-hour collaboritve pairing session -- which was great, and as good a pairing with a human!.  
 Read below to see what Claude had to say (Claude wrote the rest of this README file)
   -- Paul Brower
 
